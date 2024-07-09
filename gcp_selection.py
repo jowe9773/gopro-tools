@@ -4,7 +4,7 @@
 
 #import neccesary packages and modules
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 
 class ImageViewer(tk.Frame):
@@ -27,9 +27,6 @@ class ImageViewer(tk.Frame):
     def create_widgets(self):
         self.canvas = tk.Canvas(self, bg="gray")
         self.canvas.pack(fill=tk.BOTH, expand=True)
-
-        self.open_btn = tk.Button(self, text="Open Image", command=self.open_image)
-        self.open_btn.pack()
 
     def open_image(self):
         filepath = filedialog.askopenfilename()
@@ -81,15 +78,61 @@ class ImageViewer(tk.Frame):
         self.img_pos = (self.img_pos[0] - offset_x, self.img_pos[1] - offset_y)
         self.update_image()
 
+    def submit_action(self):
+        print("Selected Option:", self.radio_var.get())
+        print("Entry 1:", self.entry1.get())
+        print("Entry 2:", self.entry2.get())
+
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Image Viewer")
+        self.geometry("1200x800")  # Set initial window size
+        self.minsize(600, 400)  # Set minimum window size
+
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=0)
+        self.rowconfigure(0, weight=1)
+
+        main_frame = ttk.Frame(self)
+        main_frame.grid(row=0, column=0, sticky="nsew")
+
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.rowconfigure(0, weight=1)
+
+        # Image Frame
+        image_frame = ttk.Frame(main_frame)
+        image_frame.grid(row=0, column=0, sticky="nsew")
+        self.image_viewer = ImageViewer(master=image_frame)
+
+        # Control Panel
+        control_panel = ttk.Frame(self)
+        control_panel.grid(row=0, column=1, sticky="ns")
+
+        open_btn = ttk.Button(control_panel, text="Open Image", command=self.image_viewer.open_image)
+        open_btn.pack(pady=5)
+
+        self.radio_var = tk.StringVar()
+        self.radio_var.set("Option 1")
+
+        tk.Radiobutton(control_panel, text="Option 1", variable=self.radio_var, value="Option 1").pack(anchor=tk.W)
+        tk.Radiobutton(control_panel, text="Option 2", variable=self.radio_var, value="Option 2").pack(anchor=tk.W)
+
+        self.entry1 = ttk.Entry(control_panel)
+        self.entry1.pack(pady=5)
+        self.entry2 = ttk.Entry(control_panel)
+        self.entry2.pack(pady=5)
+
+        submit_btn = ttk.Button(control_panel, text="Submit", command=self.submit_action)
+        submit_btn.pack(pady=5)
+
+    def submit_action(self):
+        print("Selected Option:", self.radio_var.get())
+        print("Entry 1:", self.entry1.get())
+        print("Entry 2:", self.entry2.get())
+
 if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("Image Viewer")
-    root.geometry("1500x1000")  # Set initial window size
-    root.minsize(600, 400)  # Set minimum window size
-    app = ImageViewer(master=root)
-
-    # Wait for the window to be fully initialized before fitting the image
-    root.update_idletasks()
-    app.fit_image_to_window()
-
+    app = App()
+    app.update_idletasks()
+    app.image_viewer.fit_image_to_window()
     app.mainloop()
