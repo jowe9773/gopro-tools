@@ -2,10 +2,58 @@
 
 """This file will contain the code that opens a GUI based GCP selection tool."""
 
-#import neccesary packages and modules
 import tkinter as tk
 from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
+
+
+class TargetWidget(ttk.Frame):
+    def __init__(self, master=None, variable=None, value=None, app=None):
+        super().__init__(master)
+        self.variable = variable
+        self.value = value
+        self.app = app  # Store reference to the App instance
+        self.create_widgets()
+
+    def create_widgets(self):
+        self.radio_button = ttk.Radiobutton(self, text="Target", variable=self.variable, value=self.value,
+                                            command=self.set_active)
+        self.radio_button.grid(row=0, column=0, padx=5, pady=5)
+
+        self.target_label = ttk.Label(self, text="Target:")
+        self.target_label.grid(row=0, column=1, padx=5, pady=5)
+        self.target_entry = ttk.Entry(self)
+        self.target_entry.grid(row=0, column=2, padx=5, pady=5)
+
+        self.xpixels_label = ttk.Label(self, text="X Pixels:")
+        self.xpixels_label.grid(row=0, column=3, padx=5, pady=5)
+        self.xpixels_entry = ttk.Entry(self)
+        self.xpixels_entry.grid(row=0, column=4, padx=5, pady=5)
+
+        self.ypixels_label = ttk.Label(self, text="Y Pixels:")
+        self.ypixels_label.grid(row=0, column=5, padx=5, pady=5)
+        self.ypixels_entry = ttk.Entry(self)
+        self.ypixels_entry.grid(row=0, column=6, padx=5, pady=5)
+
+    def set_active(self):
+        if self.app.radio_variable.get() == self.value:
+            self.app.set_active(self.value)  # Call set_active on the App instance
+        self.app.image_viewer.draw_points()  # Redraw points when the active target changes
+
+    def update_coordinates(self, x, y):
+        self.xpixels_entry.delete(0, tk.END)
+        self.xpixels_entry.insert(0, str(x))
+        self.ypixels_entry.delete(0, tk.END)
+        self.ypixels_entry.insert(0, str(y))
+
+    def get_coordinates(self):
+        try:
+            x = int(self.xpixels_entry.get())
+            y = int(self.ypixels_entry.get())
+            return (x, y)
+        except ValueError:
+            return None
+
 
 class ImageViewer(tk.Frame):
     def __init__(self, master=None, app=None):
@@ -24,6 +72,8 @@ class ImageViewer(tk.Frame):
         self.scale = 1.0
         self.canvas_origin = (0, 0)
         self.img_pos = (0, 0)  # Top-left corner of the image on the canvas
+        self.active_target = None  # Track the active target
+        self.points = {}  # Store points for each target widget
 
     def create_widgets(self):
         self.canvas = tk.Canvas(self, bg="gray")
@@ -53,17 +103,33 @@ class ImageViewer(tk.Frame):
         if self.image:
             width, height = self.image.size
             scaled_width, scaled_height = int(width * self.scale), int(height * self.scale)
-            img = self.image.resize((scaled_width, scaled_height), Image.Resampling.LANCZOS)
+            img = self.image.resize((scaled_width, scaled_height), Image.LANCZOS)
             self.tk_img = ImageTk.PhotoImage(img)
             self.canvas.delete("all")
             self.canvas.create_image(self.img_pos[0], self.img_pos[1], anchor=tk.NW, image=self.tk_img)
             self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
+            self.draw_points()
+
+    def draw_points(self):
+        self.canvas.delete("points")
+        for index, target_widget in enumerate(self.app.target_widgets):
+            coordinates = target_widget.get_coordinates()
+            if coordinates:
+                x, y = coordinates
+                scaled_x, scaled_y = int(x * self.scale + self.img_pos[0]), int(y * self.scale + self.img_pos[1])
+                # Determine color based on active state
+                if self.app.radio_variable.get() == index:
+                    color = "red"
+                else:
+                    color = "blue"
+                self.canvas.create_oval(scaled_x - 3, scaled_y - 3, scaled_x + 3, scaled_y + 3, fill=color, outline=color, tags="points")
 
     def on_double_click(self, event):
-        self.canvas_origin = (event.x, event.y)
-        canvas_x, canvas_y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
-        img_x, img_y = int((canvas_x - self.img_pos[0]) / self.scale), int((canvas_y - self.img_pos[1]) / self.scale)
-        self.app.update_coordinates(img_x, img_y)
+        if self.active_target is not None:
+            canvas_x, canvas_y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
+            img_x, img_y = int((canvas_x - self.img_pos[0]) / self.scale), int((canvas_y - self.img_pos[1]) / self.scale)
+            self.app.update_coordinates(img_x, img_y)
+            self.draw_points()
 
     def on_drag_start(self, event):
         self.canvas_origin = (event.x, event.y)
@@ -84,6 +150,7 @@ class ImageViewer(tk.Frame):
         self.scale *= scale_factor
         self.img_pos = (self.img_pos[0] - offset_x, self.img_pos[1] - offset_y)
         self.update_image()
+
 
 class App(tk.Tk):
     def __init__(self):
@@ -110,25 +177,34 @@ class App(tk.Tk):
         # Control Panel
         control_panel = ttk.Frame(self)
         control_panel.grid(row=0, column=1, sticky="ns")
+        self.control_panel = control_panel
 
         open_btn = ttk.Button(control_panel, text="Open Image", command=self.image_viewer.open_image)
         open_btn.pack(pady=5)
 
-        self.x_label = ttk.Label(control_panel, text="X:")
-        self.x_label.pack(anchor=tk.W, pady=5)
-        self.x_entry = ttk.Entry(control_panel)
-        self.x_entry.pack(anchor=tk.W, pady=5)
+        add_target_btn = ttk.Button(control_panel, text="Add Target", command=self.add_target)
+        add_target_btn.pack(pady=5)
 
-        self.y_label = ttk.Label(control_panel, text="Y:")
-        self.y_label.pack(anchor=tk.W, pady=5)
-        self.y_entry = ttk.Entry(control_panel)
-        self.y_entry.pack(anchor=tk.W, pady=5)
+        self.target_widgets = []
+        self.radio_variable = tk.IntVar(value=-1)  # Shared variable for all radio buttons
+
+    def set_active(self, target_index):
+        self.image_viewer.active_target = target_index
+        self.radio_variable.set(target_index)  # Update the shared radio variable
+        self.image_viewer.draw_points()  # Redraw points when active target changes
 
     def update_coordinates(self, x, y):
-        self.x_entry.delete(0, tk.END)
-        self.x_entry.insert(0, str(x))
-        self.y_entry.delete(0, tk.END)
-        self.y_entry.insert(0, str(y))
+        if self.image_viewer.active_target is not None:
+            self.target_widgets[self.image_viewer.active_target].update_coordinates(x, y)
+            self.image_viewer.draw_points()
+
+    def add_target(self):
+        target_widget = TargetWidget(self.control_panel, variable=self.radio_variable, value=len(self.target_widgets), app=self)
+        target_widget.pack(fill=tk.X, pady=5, padx=5)
+        self.target_widgets.append(target_widget)
+        self.radio_variable.set(len(self.target_widgets) - 1)
+        self.set_active(len(self.target_widgets) - 1)
+
 
 if __name__ == "__main__":
     app = App()
