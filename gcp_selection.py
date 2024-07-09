@@ -8,9 +8,9 @@ from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 
 class ImageViewer(tk.Frame):
-    def __init__(self, master=None):
+    def __init__(self, master=None, app=None):
         super().__init__(master)
-        self.master = master
+        self.app = app
         self.pack(fill=tk.BOTH, expand=True)
         self.create_widgets()
 
@@ -60,6 +60,9 @@ class ImageViewer(tk.Frame):
 
     def on_click(self, event):
         self.canvas_origin = (event.x, event.y)
+        canvas_x, canvas_y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
+        img_x, img_y = int((canvas_x - self.img_pos[0]) / self.scale), int((canvas_y - self.img_pos[1]) / self.scale)
+        self.app.update_coordinates(img_x, img_y)
 
     def on_drag(self, event):
         dx = event.x - self.canvas_origin[0]
@@ -77,11 +80,6 @@ class ImageViewer(tk.Frame):
         self.scale *= scale_factor
         self.img_pos = (self.img_pos[0] - offset_x, self.img_pos[1] - offset_y)
         self.update_image()
-
-    def submit_action(self):
-        print("Selected Option:", self.radio_var.get())
-        print("Entry 1:", self.entry1.get())
-        print("Entry 2:", self.entry2.get())
 
 class App(tk.Tk):
     def __init__(self):
@@ -103,7 +101,7 @@ class App(tk.Tk):
         # Image Frame
         image_frame = ttk.Frame(main_frame)
         image_frame.grid(row=0, column=0, sticky="nsew")
-        self.image_viewer = ImageViewer(master=image_frame)
+        self.image_viewer = ImageViewer(master=image_frame, app=self)
 
         # Control Panel
         control_panel = ttk.Frame(self)
@@ -112,24 +110,21 @@ class App(tk.Tk):
         open_btn = ttk.Button(control_panel, text="Open Image", command=self.image_viewer.open_image)
         open_btn.pack(pady=5)
 
-        self.radio_var = tk.StringVar()
-        self.radio_var.set("Option 1")
+        self.x_label = ttk.Label(control_panel, text="X:")
+        self.x_label.pack(anchor=tk.W, pady=5)
+        self.x_entry = ttk.Entry(control_panel)
+        self.x_entry.pack(anchor=tk.W, pady=5)
 
-        tk.Radiobutton(control_panel, text="Option 1", variable=self.radio_var, value="Option 1").pack(anchor=tk.W)
-        tk.Radiobutton(control_panel, text="Option 2", variable=self.radio_var, value="Option 2").pack(anchor=tk.W)
+        self.y_label = ttk.Label(control_panel, text="Y:")
+        self.y_label.pack(anchor=tk.W, pady=5)
+        self.y_entry = ttk.Entry(control_panel)
+        self.y_entry.pack(anchor=tk.W, pady=5)
 
-        self.entry1 = ttk.Entry(control_panel)
-        self.entry1.pack(pady=5)
-        self.entry2 = ttk.Entry(control_panel)
-        self.entry2.pack(pady=5)
-
-        submit_btn = ttk.Button(control_panel, text="Submit", command=self.submit_action)
-        submit_btn.pack(pady=5)
-
-    def submit_action(self):
-        print("Selected Option:", self.radio_var.get())
-        print("Entry 1:", self.entry1.get())
-        print("Entry 2:", self.entry2.get())
+    def update_coordinates(self, x, y):
+        self.x_entry.delete(0, tk.END)
+        self.x_entry.insert(0, str(x))
+        self.y_entry.delete(0, tk.END)
+        self.y_entry.insert(0, str(y))
 
 if __name__ == "__main__":
     app = App()
