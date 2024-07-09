@@ -14,8 +14,9 @@ class ImageViewer(tk.Frame):
         self.pack(fill=tk.BOTH, expand=True)
         self.create_widgets()
 
-        self.canvas.bind("<Button-1>", self.on_click)
+        self.canvas.bind("<Double-1>", self.on_double_click)
         self.canvas.bind("<B1-Motion>", self.on_drag)
+        self.canvas.bind("<ButtonPress-1>", self.on_drag_start)
         self.canvas.bind("<MouseWheel>", self.on_zoom)
 
         self.image = None
@@ -58,11 +59,14 @@ class ImageViewer(tk.Frame):
             self.canvas.create_image(self.img_pos[0], self.img_pos[1], anchor=tk.NW, image=self.tk_img)
             self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
 
-    def on_click(self, event):
+    def on_double_click(self, event):
         self.canvas_origin = (event.x, event.y)
         canvas_x, canvas_y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
         img_x, img_y = int((canvas_x - self.img_pos[0]) / self.scale), int((canvas_y - self.img_pos[1]) / self.scale)
         self.app.update_coordinates(img_x, img_y)
+
+    def on_drag_start(self, event):
+        self.canvas_origin = (event.x, event.y)
 
     def on_drag(self, event):
         dx = event.x - self.canvas_origin[0]
