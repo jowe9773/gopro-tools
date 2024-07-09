@@ -103,7 +103,7 @@ class ImageViewer(tk.Frame):
         if self.image:
             width, height = self.image.size
             scaled_width, scaled_height = int(width * self.scale), int(height * self.scale)
-            img = self.image.resize((scaled_width, scaled_height), Image.LANCZOS)
+            img = self.image.resize((scaled_width, scaled_height), Image.Resampling.LANCZOS)
             self.tk_img = ImageTk.PhotoImage(img)
             self.canvas.delete("all")
             self.canvas.create_image(self.img_pos[0], self.img_pos[1], anchor=tk.NW, image=self.tk_img)
