@@ -18,24 +18,24 @@ class TargetWidget(ttk.Frame):
         self.create_widgets()
 
     def create_widgets(self):
-        self.radio_button = ttk.Radiobutton(self, text="Target", variable=self.variable, value=self.value,
+        self.radio_button = ttk.Radiobutton(self, variable=self.variable, value=self.value,
                                             command=self.set_active)
-        self.radio_button.grid(row=0, column=0, padx=5, pady=5)
+        self.radio_button.grid(row=0, column=0, padx=2, pady=5)
 
         self.target_label = ttk.Label(self, text="Target:")
-        self.target_label.grid(row=0, column=1, padx=5, pady=5)
+        self.target_label.grid(row=0, column=1, padx=2, pady=5)
         self.target_entry = ttk.Entry(self, width=self.entry_width)
-        self.target_entry.grid(row=0, column=2, padx=5, pady=5)
+        self.target_entry.grid(row=0, column=2, padx=2, pady=5)
 
         self.xpixels_label = ttk.Label(self, text="X Pixels:")
-        self.xpixels_label.grid(row=0, column=3, padx=5, pady=5)
+        self.xpixels_label.grid(row=0, column=3, padx=2, pady=5)
         self.xpixels_entry = ttk.Entry(self, width=self.entry_width)
-        self.xpixels_entry.grid(row=0, column=4, padx=5, pady=5)
+        self.xpixels_entry.grid(row=0, column=4, padx=2, pady=5)
 
         self.ypixels_label = ttk.Label(self, text="Y Pixels:")
-        self.ypixels_label.grid(row=0, column=5, padx=5, pady=5)
+        self.ypixels_label.grid(row=0, column=5, padx=2, pady=5)
         self.ypixels_entry = ttk.Entry(self, width=self.entry_width)
-        self.ypixels_entry.grid(row=0, column=6, padx=5, pady=5)
+        self.ypixels_entry.grid(row=0, column=6, padx=2, pady=5)
 
     def set_active(self):
         if self.app.radio_variable.get() == self.value:
@@ -214,7 +214,7 @@ class App(tk.Tk):
 
         # Scrollable frame for target widgets
         self.scroll_canvas = tk.Canvas(control_panel)
-        self.scroll_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.scroll_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2, pady=5)
 
         scrollbar = ttk.Scrollbar(control_panel, orient="vertical", command=self.scroll_canvas.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
