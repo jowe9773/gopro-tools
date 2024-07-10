@@ -6,6 +6,7 @@
 import os
 import numpy as np
 import cv2
+from moviepy.editor import VideoFileClip
 from file_managers import FileManagers
 
 class OrthomosaicTools():
@@ -13,6 +14,29 @@ class OrthomosaicTools():
 
     def __init__(self):
         print("initialized")
+
+    def calculate_time_offsets(self, video_paths):
+        audio_tracks = []
+
+        # Load each video and extract audio as numpy array
+        for path in video_paths:
+            video_clip = VideoFileClip(path)
+            audio = video_clip.audio.to_soundarray()
+            audio_tracks.append(audio)
+
+        # Assuming audio_tracks are numpy arrays of audio data
+        reference_audio = audio_tracks[0]
+        offsets = [0]  # Offset for reference audio is 0
+
+        # Calculate offsets for other audio tracks
+        for audio in audio_tracks[1:]:
+            # Calculate cross-correlation
+            corr = np.correlate(reference_audio[:, 0], audio[:, 0], mode='full')
+            offset = np.argmax(corr) - len(reference_audio)
+            offsets.append(offset / video_clip.fps)  # Convert samples to time offset in seconds
+
+        return offsets
+
 
     def find_homography(self, cam, gcps):
         """Method for finding homography matrix."""

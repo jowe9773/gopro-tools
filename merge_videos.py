@@ -31,14 +31,16 @@ gcps_list = [gcps, gcps1, gcps2, gcps3]
 print(gcps_list)
 
 #time offsets between the videos (in ms)
-offsets = [0, 53500, 0, 53500]
+
+
+offsets = ot.calculate_time_offsets(videos)
 
 #choose start time for first video and length to process
 start = 297
 length = 30
 
 #choose compression and output speed
-compress = 5
+compress = 4
 speed = 1
 
 #output video file information
