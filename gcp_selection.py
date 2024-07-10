@@ -3,16 +3,18 @@
 """This file will contain the code that opens a GUI based GCP selection tool."""
 
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, messagebox
+import csv
+import cv2
 from PIL import Image, ImageTk
 
-
 class TargetWidget(ttk.Frame):
-    def __init__(self, master=None, variable=None, value=None, app=None):
+    def __init__(self, master=None, variable=None, value=None, app=None, entry_width=5):
         super().__init__(master)
         self.variable = variable
         self.value = value
         self.app = app  # Store reference to the App instance
+        self.entry_width = entry_width
         self.create_widgets()
 
     def create_widgets(self):
@@ -22,17 +24,17 @@ class TargetWidget(ttk.Frame):
 
         self.target_label = ttk.Label(self, text="Target:")
         self.target_label.grid(row=0, column=1, padx=5, pady=5)
-        self.target_entry = ttk.Entry(self)
+        self.target_entry = ttk.Entry(self, width=self.entry_width)
         self.target_entry.grid(row=0, column=2, padx=5, pady=5)
 
         self.xpixels_label = ttk.Label(self, text="X Pixels:")
         self.xpixels_label.grid(row=0, column=3, padx=5, pady=5)
-        self.xpixels_entry = ttk.Entry(self)
+        self.xpixels_entry = ttk.Entry(self, width=self.entry_width)
         self.xpixels_entry.grid(row=0, column=4, padx=5, pady=5)
 
         self.ypixels_label = ttk.Label(self, text="Y Pixels:")
         self.ypixels_label.grid(row=0, column=5, padx=5, pady=5)
-        self.ypixels_entry = ttk.Entry(self)
+        self.ypixels_entry = ttk.Entry(self, width=self.entry_width)
         self.ypixels_entry.grid(row=0, column=6, padx=5, pady=5)
 
     def set_active(self):
@@ -54,6 +56,13 @@ class TargetWidget(ttk.Frame):
         except ValueError:
             return None
 
+    def get_target_data(self):
+        target = self.target_entry.get()
+        coordinates = self.get_coordinates()
+        if coordinates:
+            x, y = coordinates
+            return [target, x, y]
+        return [target, "", ""]
 
 class ImageViewer(tk.Frame):
     def __init__(self, master=None, app=None):
@@ -84,7 +93,20 @@ class ImageViewer(tk.Frame):
         if not filepath:
             return
 
-        self.image = Image.open(filepath)
+        if ".jpg" in filepath:
+            self.image = Image.open(filepath)
+
+        if ".MP4" in filepath:
+
+            cap = cv2.VideoCapture(filepath)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 5)
+            ret, frame = cap.read()
+            cap.release()
+            if ret:
+                self.image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            else:
+                print("Frame couldnt be opened")
+        
         self.img_pos = (0, 0)
         self.fit_image_to_window()
         self.update_image()
@@ -128,7 +150,7 @@ class ImageViewer(tk.Frame):
         if self.active_target is not None:
             canvas_x, canvas_y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
             img_x, img_y = int((canvas_x - self.img_pos[0]) / self.scale), int((canvas_y - self.img_pos[1]) / self.scale)
-            self.app.update_coordinates(img_x, img_y)
+            self.app.update_coordinates(self.active_target, img_x, img_y)
             self.draw_points()
 
     def on_drag_start(self, event):
@@ -150,7 +172,6 @@ class ImageViewer(tk.Frame):
         self.scale *= scale_factor
         self.img_pos = (self.img_pos[0] - offset_x, self.img_pos[1] - offset_y)
         self.update_image()
-
 
 class App(tk.Tk):
     def __init__(self):
@@ -179,32 +200,64 @@ class App(tk.Tk):
         control_panel.grid(row=0, column=1, sticky="ns")
         self.control_panel = control_panel
 
-        open_btn = ttk.Button(control_panel, text="Open Image", command=self.image_viewer.open_image)
+        open_btn = ttk.Button(control_panel, text="Open Image/Video", command=self.image_viewer.open_image)
         open_btn.pack(pady=5)
 
         add_target_btn = ttk.Button(control_panel, text="Add Target", command=self.add_target)
         add_target_btn.pack(pady=5)
 
+        save_btn = ttk.Button(control_panel, text="Save Target Coordinates", command=self.save_targets)
+        save_btn.pack(pady=5)
+
         self.target_widgets = []
         self.radio_variable = tk.IntVar(value=-1)  # Shared variable for all radio buttons
+
+        # Scrollable frame for target widgets
+        self.scroll_canvas = tk.Canvas(control_panel)
+        self.scroll_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        scrollbar = ttk.Scrollbar(control_panel, orient="vertical", command=self.scroll_canvas.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.scroll_frame = ttk.Frame(self.scroll_canvas)
+        self.scroll_canvas.create_window((0, 0), window=self.scroll_frame, anchor="nw")
+        self.scroll_frame.bind("<Configure>", self.on_frame_configure)
+
+        self.scroll_canvas.configure(yscrollcommand=scrollbar.set)
+
+    def on_frame_configure(self, event):
+        self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all"))
 
     def set_active(self, target_index):
         self.image_viewer.active_target = target_index
         self.radio_variable.set(target_index)  # Update the shared radio variable
         self.image_viewer.draw_points()  # Redraw points when active target changes
 
-    def update_coordinates(self, x, y):
-        if self.image_viewer.active_target is not None:
-            self.target_widgets[self.image_viewer.active_target].update_coordinates(x, y)
-            self.image_viewer.draw_points()
+    def update_coordinates(self, target_index, x, y):
+        self.target_widgets[target_index].update_coordinates(x, y)
+        self.image_viewer.draw_points()
 
     def add_target(self):
-        target_widget = TargetWidget(self.control_panel, variable=self.radio_variable, value=len(self.target_widgets), app=self)
+        target_widget = TargetWidget(self.scroll_frame, variable=self.radio_variable, value=len(self.target_widgets), app=self)
         target_widget.pack(fill=tk.X, pady=5, padx=5)
         self.target_widgets.append(target_widget)
         self.radio_variable.set(len(self.target_widgets) - 1)
         self.set_active(len(self.target_widgets) - 1)
 
+    def save_targets(self):
+        filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
+        if not filepath:
+            return
+
+        try:
+            with open(filepath, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(["Target", "XPixels", "YPixels"])
+                for target_widget in self.target_widgets:
+                    writer.writerow(target_widget.get_target_data())
+            messagebox.showinfo("Save Successful", f"Target coordinates saved to {filepath}")
+        except Exception as e:
+            messagebox.showerror("Save Failed", f"An error occurred while saving the file: {e}")
 
 if __name__ == "__main__":
     app = App()
