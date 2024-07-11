@@ -37,8 +37,8 @@ rate3, audio3 = ot.extract_audio(videos[2])
 rate4, audio4 = ot.extract_audio(videos[3])
 
 offset2 = ot.find_time_offset(rate1, audio1, rate2, audio2)
-offset3 = ot.find_time_offset(rate1, audio1, rate3, audio3)
-offset4 = ot.find_time_offset(rate1, audio1, rate4, audio4)
+offset3 = ot.find_time_offset(rate2, audio2, rate3, audio3) + offset2
+offset4 = ot.find_time_offset(rate3, audio3, rate4, audio4) + offset3
 
 
 offsets = [0, offset2*-1000, offset3*-1000, offset4*-1000]
@@ -46,7 +46,7 @@ print(offsets)
 
 #choose start time for first video and length to process
 start = 305
-length = 10
+length = 2
 
 #choose compression and output speed
 compress = 4

@@ -60,7 +60,7 @@ class OrthomosaicTools():
         #adjust the ground control points so that they are within the frame of the camera, which starts at (0,0) for each camera
         for count, i in enumerate(gcps[0]):
             i[0] = float(i[0]) - 2438 * (cam-1)
-            i[1] = float(i[1]) + 2000
+            i[1] = (float(i[1])*-1) + 2000
 
         #convert the image and destination coordinates to numpy array with float32
         src_pts = np.array(gcps[1])
