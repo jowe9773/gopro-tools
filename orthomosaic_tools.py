@@ -4,9 +4,12 @@
 
 #Load neccesary packages and modules
 import os
+import tempfile
 import numpy as np
 import cv2
-from moviepy.editor import VideoFileClip
+import moviepy.editor as mp
+from scipy.signal import correlate
+from scipy.io import wavfile
 from file_managers import FileManagers
 
 class OrthomosaicTools():
@@ -15,32 +18,41 @@ class OrthomosaicTools():
     def __init__(self):
         print("initialized")
 
-    def calculate_time_offsets(self, video_paths):
-        audio_tracks = []
+    def extract_audio(self, video_path):
 
-        # Load each video and extract audio as numpy array
-        for path in video_paths:
-            video_clip = VideoFileClip(path)
-            audio = video_clip.audio.to_soundarray(fps=44100)
-            
-            # Check if the audio is stereo and convert to mono if necessary
-            if audio.ndim > 1:
-                audio = audio.mean(axis=1)
-            
-            audio_tracks.append(audio)
+        print(video_path)
+        clip = mp.VideoFileClip(video_path)
+        audio = clip.audio
+        # Save audio to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_audio_file:
+            temp_audio_path = temp_audio_file.name
+        audio.write_audiofile(temp_audio_path, codec='pcm_s16le')
+        rate, audio_data = wavfile.read(temp_audio_path)
+        return rate, audio_data
 
-        # Assuming audio_tracks are numpy arrays of audio data
-        reference_audio = audio_tracks[0]
-        offsets = [0]  # Offset for reference audio is 0
+    def find_time_offset(self, rate1, audio1, rate2, audio2):
+        # Ensure the sample rates are the same
+        if rate1 != rate2:
+            raise ValueError("Sample rates of the two audio tracks do not match")
 
-        # Calculate offsets for other audio tracks
-        for audio in audio_tracks[1:]:
-            # Calculate cross-correlation
-            corr = np.correlate(reference_audio, audio, mode='full')
-            offset = np.argmax(corr) - len(reference_audio)
-            offsets.append(offset / 44100)  # Convert samples to time offset in seconds
+        # Convert stereo to mono if necessary
+        if len(audio1.shape) == 2:
+            audio1 = audio1.mean(axis=1)
+        if len(audio2.shape) == 2:
+            audio2 = audio2.mean(axis=1)
 
-        return offsets
+        # Normalize audio data to avoid overflow
+        audio1 = audio1 / np.max(np.abs(audio1))
+        audio2 = audio2 / np.max(np.abs(audio2))
+
+        # Compute cross-correlation
+        correlation = correlate(audio1, audio2)
+        lag = np.argmax(correlation) - len(audio2) + 1
+
+        # Calculate the time offset in seconds
+        time_offset = lag / rate1
+
+        return time_offset
 
     def find_homography(self, cam, gcps):
         """Method for finding homography matrix."""
