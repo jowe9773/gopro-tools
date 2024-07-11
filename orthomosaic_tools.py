@@ -21,7 +21,12 @@ class OrthomosaicTools():
         # Load each video and extract audio as numpy array
         for path in video_paths:
             video_clip = VideoFileClip(path)
-            audio = video_clip.audio.to_soundarray()
+            audio = video_clip.audio.to_soundarray(fps=44100)
+            
+            # Check if the audio is stereo and convert to mono if necessary
+            if audio.ndim > 1:
+                audio = audio.mean(axis=1)
+            
             audio_tracks.append(audio)
 
         # Assuming audio_tracks are numpy arrays of audio data
@@ -31,12 +36,11 @@ class OrthomosaicTools():
         # Calculate offsets for other audio tracks
         for audio in audio_tracks[1:]:
             # Calculate cross-correlation
-            corr = np.correlate(reference_audio[:, 0], audio[:, 0], mode='full')
+            corr = np.correlate(reference_audio, audio, mode='full')
             offset = np.argmax(corr) - len(reference_audio)
-            offsets.append(offset / video_clip.fps)  # Convert samples to time offset in seconds
+            offsets.append(offset / 44100)  # Convert samples to time offset in seconds
 
         return offsets
-
 
     def find_homography(self, cam, gcps):
         """Method for finding homography matrix."""
