@@ -45,8 +45,8 @@ offsets = [0, offset2*-1000, offset3*-1000, offset4*-1000]
 print(offsets)
 
 #choose start time for first video and length to process
-start = 305
-length = 2
+start = 56
+length = 90
 
 #choose compression and output speed
 compress = 4

@@ -62,10 +62,4 @@ if __name__ == '__main__':
     # Step 2: Prepare parameters for find_time_offset
     audio_pairs = [(rates[0], audios[0], rates[i], audios[i]) for i in range(1, len(rates))]
 
-    # Step 3: Find time offsets between each pair of audio files using multiprocessing
-    with multiprocessing.Pool(processes=len(audio_pairs)) as pool:
-        offsets_async = [pool.apply_async(find_time_offset_wrapper, (params,)) for params in audio_pairs]
-        offsets = [0] + [res.get() for res in offsets_async]
-
-    print(offsets)
-    
+    print(audio_pairs)
