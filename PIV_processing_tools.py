@@ -5,6 +5,9 @@
 #import packages and modules
 import pandas as pd
 import numpy as np
+import geopandas as gpd
+from shapely.geometry import Point
+from osgeo import gdal,osr
 
 class PIVProcessingTools():
     """Class containing PIV processing tools"""
@@ -57,12 +60,17 @@ class PIVProcessingTools():
         x_size = df.iloc[x_num, 0] - df.iloc[0, 0]
         y_size = df.iloc[1, 1] - df.iloc[0, 1]
 
+        x_dim = x_size * x_num
+        y_dim = y_size * y_num
+
         print("X origin: ", x_origin)
         print("Y origin: ", y_origin)
         print("x_num: ", x_num)
         print("y_num: ", y_num)
         print("x_size: ", x_size)
         print("y_size: ", y_size)
+        print("x_dim: ", x_dim)
+        print("y_dim: ", y_dim)
 
         metadata = [x_origin, y_origin, x_num, y_num, x_size, y_size]
 
@@ -84,3 +92,68 @@ class PIVProcessingTools():
         v_array_2d = np.transpose(v_array_2d)
 
         return u_array_2d, v_array_2d
+    
+    def export_PIV_as_geotiff(self, out_array, projection_num, directory, geotransform):
+        proj = osr.SpatialReference()
+        proj.ImportFromEPSG(projection_num)
+
+        datout = np.squeeze(out_array)
+
+        datout[np.isnan(datout)] = -9999
+        driver = gdal.GetDriverByName('GTiff')
+        cols,rows = np.shape(datout)
+
+        output_filename = directory + "/out_array.tif"
+
+        ds = driver.Create(output_filename, rows, cols, 1, gdal.GDT_Float32, [ 'COMPRESS=LZW' ] )
+        if proj is not None:
+            ds.SetProjection(proj.ExportToWkt())
+
+        ds.SetGeoTransform(geotransform)
+        ss_band = ds.GetRasterBand(1)
+        ss_band.WriteArray(datout)
+        ss_band.SetNoDataValue(-9999)
+        ss_band.FlushCache()
+        ss_band.ComputeStatistics(False)
+        ss_band.SetUnitType('m')
+
+    def export_PIV_as_shp(self, out_array, metadata, projection_num, directory):
+
+        # Unpack the start coordinates
+        x_start = metadata[0] * 1000
+        y_start = 2000 - metadata[1] * 1000
+        
+        # Get the dimensions of the array
+        rows, cols, num_attributes = out_array.shape
+        
+        # Create a list to store the point geometries and their attributes
+        points = []
+
+        # Iterate over the array to create points and attributes
+        for i in range(rows):
+            
+            for j in range(cols):
+                # Calculate the coordinates of the current point
+                x = x_start + j * metadata[4] * 1000
+                y = y_start - i * metadata[5] * 1000
+
+                # Create a Point object
+                point = Point(x, y)
+
+                # Extract the attributes for the current point
+                attributes = out_array[i, j, :]
+
+                # Append the point and attributes to the list
+                points.append((point, *attributes))
+
+        # Create a GeoDataFrame from the list of points and attributes
+        attribute_names = ["u_mean", "v_mean", "magnitude_mean"]
+        columns = ['geometry'] + attribute_names
+
+        gdf = gpd.GeoDataFrame(points, columns=columns)
+
+        # Set the CRS
+        gdf.set_crs(epsg=projection_num, inplace=True)
+
+        # Save the GeoDataFrame to a shapefile
+        gdf.to_file(directory + "/out_array.shp")
