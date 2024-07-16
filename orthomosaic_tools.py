@@ -16,7 +16,7 @@ class OrthomosaicTools():
     """Class contains methods for orthorectification and mosaicing of photos and videos"""
 
     def __init__(self):
-        print("initialized")
+        print("Initialized Orthomosaic Tools")
 
     def extract_audio(self, video_path):
 

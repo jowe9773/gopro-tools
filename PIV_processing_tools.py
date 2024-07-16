@@ -1,6 +1,5 @@
 #PIV_processing_tools.py
-
-"""houses all of the important tools needed to post process piv data"""
+"""This file holds all of the important tools needed to post process piv data. This means data that is exported from PIVLAB as a text file (with metadata?)"""
 
 #import packages and modules
 import pandas as pd
@@ -13,14 +12,18 @@ class PIVProcessingTools():
     """Class containing PIV processing tools"""
 
     def __init__(self):
-        print("initialized")
+        print("Initialized PIV Processing Tools")
 
     def load_metadata(self, filename):
+        """This module extracts metadata from a PIV data file saved as a .txt. 
+        Will extract cell size, dimensions of grid, starting location grid center, and grid size."""
+
         # Read the CSV file into a DataFrame
         df = pd.read_csv(filename, skiprows=2)
 
+        #find the number of rows of data (how many cells in the y direction)
         #instantiate counter variables
-        x_num = None
+        y_num = None
         rows_before_change = 0
         previous_value = df.iloc[0, 0]
 
@@ -35,6 +38,7 @@ class PIVProcessingTools():
             rows_before_change += 1
             previous_value = current_value
 
+        # find the number of columns of data (how many cells in the x direction)
         #initialze counter variables
         y_num = None
         previous_value = None
@@ -54,10 +58,10 @@ class PIVProcessingTools():
         x_origin = df.iloc[0, 0]
         y_origin = df.iloc[0, 1]
 
-        x_num = rows_before_change
-        y_num = change_count
+        x_num = change_count
+        y_num = rows_before_change
 
-        x_size = df.iloc[x_num, 0] - df.iloc[0, 0]
+        x_size = df.iloc[rows_before_change, 0] - df.iloc[0, 0]
         y_size = df.iloc[1, 1] - df.iloc[0, 1]
 
         x_dim = x_size * x_num
@@ -86,9 +90,9 @@ class PIVProcessingTools():
         v_values = df.iloc[:, 3].values
 
         # Reshape the values into a 2D NumPy array
-        u_array_2d = u_values.reshape(y_num, x_num)
+        u_array_2d = u_values.reshape(x_num, y_num)
         u_array_2d = np.transpose(u_array_2d)
-        v_array_2d = v_values.reshape(y_num, x_num)
+        v_array_2d = v_values.reshape(x_num, y_num)
         v_array_2d = np.transpose(v_array_2d)
 
         return u_array_2d, v_array_2d
@@ -117,7 +121,7 @@ class PIVProcessingTools():
         driver = gdal.GetDriverByName('GTiff')
         cols,rows = np.shape(datout)
 
-        output_filename = directory + "/out_array.tif"
+        output_filename = directory + "/out_array"
 
         ds = driver.Create(output_filename, rows, cols, 1, gdal.GDT_Float32, [ 'COMPRESS=LZW' ] )
         if proj is not None:
@@ -131,14 +135,14 @@ class PIVProcessingTools():
         ss_band.ComputeStatistics(False)
         ss_band.SetUnitType('m')
 
-    def export_PIV_as_shp(self, out_array, projection_num, directory, metadata):
+    def export_PIV_as_shp(self, out_array, projection_num, directory, top_right_AOI, metadata):
 
         # Unpack the start coordinates
-        x_start = metadata[0] * 1000
-        y_start = 2000 - metadata[1] * 1000
+        x_start = top_right_AOI[0] + metadata[0] * 1000
+        y_start = top_right_AOI[1] - metadata[1] * 1000
         
         # Get the dimensions of the array
-        rows, cols, num_attributes = out_array.shape
+        rows, cols, attribute_num = out_array.shape
         
         # Create a list to store the point geometries and their attributes
         points = []
@@ -161,7 +165,7 @@ class PIVProcessingTools():
                 points.append((point, *attributes))
 
         # Create a GeoDataFrame from the list of points and attributes
-        attribute_names = ["u_mean", "v_mean", "magnitude_mean"]
+        attribute_names = ["u_mean", "v_mean", "magnitude"]
         columns = ['geometry'] + attribute_names
 
         gdf = gpd.GeoDataFrame(points, columns=columns)
@@ -170,4 +174,4 @@ class PIVProcessingTools():
         gdf.set_crs(epsg=projection_num, inplace=True)
 
         # Save the GeoDataFrame to a shapefile
-        gdf.to_file(directory + "/out_array.shp")
+        gdf.to_file(directory + "/out_array")

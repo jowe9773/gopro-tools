@@ -5,6 +5,7 @@
 #import neccesary packages and modules
 import os
 import numpy as np
+from tqdm import tqdm
 from file_managers import FileManagers
 from PIV_processing_tools import PIVProcessingTools
 
@@ -26,15 +27,14 @@ text_files = [f for f in os.listdir(directory) if f.endswith('.txt')]
 metadata = ppt.load_metadata(directory + "/" + text_files[0])
 
 #create empty 3d array for the u velocities and the velocities
-u_array_3d = np.empty((metadata[2], metadata[3], 0))
-v_array_3d = np.empty((metadata[2], metadata[3], 0))
+u_array_3d = np.empty((metadata[3], metadata[2], 0))
+v_array_3d = np.empty((metadata[3], metadata[2], 0))
 
-for i in range(len(text_files)):
+for i, file in enumerate(tqdm(text_files, desc="Processing files")):
 
     filename = directory + "/" + text_files[i]
 
     u_array_2d, v_array_2d = ppt.load_txt_to_numpy(filename, metadata[2], metadata[3])
-
 
     # First, expand the 2D array to have a new axis (axis=2)
     u_expanded_array = np.expand_dims(u_array_2d, axis=2)
@@ -43,6 +43,7 @@ for i in range(len(text_files)):
     # Append the expanded array along the 3rd dimension of the 3D array
     u_array_3d = np.concatenate((u_array_3d, u_expanded_array), axis=2)
     v_array_3d = np.concatenate((v_array_3d, v_expanded_array), axis=2)
+
 
 #now that we have u_array and v_array for each file, lets find the average across the 3rd dimension (across frames)
 u_mean = np.nanmean(u_array_3d, axis=2)
@@ -58,4 +59,4 @@ final_array_3d = np.stack((u_mean, v_mean, magnitude), axis=2)
 ppt.export_PIV_as_geotiff(magnitude, 32615, directory, top_right_AOI, metadata)
 
 #export the mean u, mean v, and mean magnitude as a grid of points in a shapefile for viewing and future analysis
-ppt.export_PIV_as_shp(final_array_3d, 32615, directory, metadata)
+ppt.export_PIV_as_shp(final_array_3d, 32615, directory, top_right_AOI, metadata)
