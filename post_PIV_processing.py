@@ -12,15 +12,18 @@ from PIV_processing_tools import PIVProcessingTools
 fm = FileManagers()
 ppt = PIVProcessingTools()
 
-#load directory containing PIV files
+#load directory containing PIV files thid will also be where output files are stored. 
 directory = fm.load_dn("Select a PIV directory")
 
-text_files = [f for f in os.listdir(directory) if f.endswith('.txt')]
-print(text_files)
-
-metadata = ppt.load_metadata(directory + "/" + text_files[0])
-
+##coordinate of the top right of your area of interest in real world coorinates (mm) 
+#(this will be the coordinate of the top right corner of the top right pixel in the image used for PIV)
 top_right_AOI = [0, 2000]
+
+#create list of filenames within the directory for all .txt files.
+text_files = [f for f in os.listdir(directory) if f.endswith('.txt')]
+
+#load the metadata for the PIV (information about the pixel size, number of pixels and total dimensions of the input data) from the first file in the directory
+metadata = ppt.load_metadata(directory + "/" + text_files[0])
 
 #create empty 3d array for the u velocities and the velocities
 u_array_3d = np.empty((metadata[2], metadata[3], 0))
@@ -43,14 +46,16 @@ for i in range(len(text_files)):
 
 #now that we have u_array and v_array for each file, lets find the average across the 3rd dimension (across frames)
 u_mean = np.nanmean(u_array_3d, axis=2)
-v_mean = np.nanmean(v_array_3d, axis=2) * (-1) #to get the axes going in the correct direction (positive y towards the top of the screen)
+v_mean = np.nanmean(v_array_3d, axis=2) * (-1) #multiply by -1 to get the axes going in the correct direction (positive y towards the top of the screen)
 
-# Compute the magnitude of the velocity
+# Compute the net magnitude of the velocity
 magnitude = np.sqrt(u_mean**2 + v_mean**2)
 
 #create a 3d array with all of the outputs we are interested in: u_mean, v_mean, and magnitude
 final_array_3d = np.stack((u_mean, v_mean, magnitude), axis=2)
 
+#export the mean magnitude as a geotiff for viewing and future analysis
 ppt.export_PIV_as_geotiff(magnitude, 32615, directory, top_right_AOI, metadata)
 
+#export the mean u, mean v, and mean magnitude as a grid of points in a shapefile for viewing and future analysis
 ppt.export_PIV_as_shp(final_array_3d, 32615, directory, metadata)
