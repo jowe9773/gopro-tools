@@ -93,7 +93,21 @@ class PIVProcessingTools():
 
         return u_array_2d, v_array_2d
     
-    def export_PIV_as_geotiff(self, out_array, projection_num, directory, geotransform):
+    def export_PIV_as_geotiff(self, out_array, projection_num, directory, top_right_AOI, metadata):
+
+        x_border_offset = metadata[0] - (metadata[4]/2)
+        y_border_offset = metadata[1] - (metadata[5]/2)
+        
+        #geotransorm parameters
+        geotransform = [
+        top_right_AOI[0] + (x_border_offset*1000),                  # top left x
+        metadata[4]*1000,                                           # w-e pixel resolution
+        0.0,                                                        # rotation, 0 if image is "north up"
+        top_right_AOI[1] - (y_border_offset*1000),                              # top left y
+        0.0,                                                        # rotation, 0 if image is "north up"
+        -metadata[5]*1000                                           # n-s pixel resolution (negative value for north-up images)
+]
+
         proj = osr.SpatialReference()
         proj.ImportFromEPSG(projection_num)
 
@@ -117,7 +131,7 @@ class PIVProcessingTools():
         ss_band.ComputeStatistics(False)
         ss_band.SetUnitType('m')
 
-    def export_PIV_as_shp(self, out_array, metadata, projection_num, directory):
+    def export_PIV_as_shp(self, out_array, projection_num, directory, metadata):
 
         # Unpack the start coordinates
         x_start = metadata[0] * 1000

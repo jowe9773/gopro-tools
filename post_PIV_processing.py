@@ -20,18 +20,7 @@ print(text_files)
 
 metadata = ppt.load_metadata(directory + "/" + text_files[0])
 
-x_border_offset = metadata[0] - (metadata[4]/2)
-y_border_offset = metadata[1] - (metadata[5]/2)
-
-#geotransorm parameters
-geotransform = [
-    0 + (x_border_offset*1000),                  # top left x
-    metadata[4]*1000,        # w-e pixel resolution
-    0.0,                # rotation, 0 if image is "north up"
-    2000 - (y_border_offset*1000),               # top left y
-    0.0,                # rotation, 0 if image is "north up"
-    -metadata[5]*1000        # n-s pixel resolution (negative value for north-up images)
-]
+top_right_AOI = [0, 2000]
 
 #create empty 3d array for the u velocities and the velocities
 u_array_3d = np.empty((metadata[2], metadata[3], 0))
@@ -62,6 +51,6 @@ magnitude = np.sqrt(u_mean**2 + v_mean**2)
 #create a 3d array with all of the outputs we are interested in: u_mean, v_mean, and magnitude
 final_array_3d = np.stack((u_mean, v_mean, magnitude), axis=2)
 
-ppt.export_PIV_as_geotiff(magnitude, 32615, directory, geotransform)
+ppt.export_PIV_as_geotiff(magnitude, 32615, directory, top_right_AOI, metadata)
 
-ppt.export_PIV_as_shp(final_array_3d, metadata, 32615, directory)
+ppt.export_PIV_as_shp(final_array_3d, 32615, directory, metadata)
