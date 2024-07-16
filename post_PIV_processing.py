@@ -34,6 +34,7 @@ for i, file in enumerate(tqdm(text_files, desc="Processing files")):
 
     filename = directory + "/" + text_files[i]
 
+    #create 2d numpy arrays containing the u veocity and the v velocity data
     u_array_2d, v_array_2d = ppt.load_txt_to_numpy(filename, metadata[2], metadata[3])
 
     # First, expand the 2D array to have a new axis (axis=2)

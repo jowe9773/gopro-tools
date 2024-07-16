@@ -13,7 +13,7 @@ class FileManagers:
     """Class contains methods for managing files"""
 
     def __init__(self):
-        print("initialized")
+        print("Initialized File Managers")
 
     def load_dn(self, purpose):
         """this function opens a tkinter GUI for selecting a 

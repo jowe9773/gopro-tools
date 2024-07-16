@@ -27,7 +27,7 @@ class PIVProcessingTools():
         rows_before_change = 0
         previous_value = df.iloc[0, 0]
 
-        #cound number of rows before change in x value
+        #count number of rows before change in x value
         for index, row in df.iterrows():
             current_value = row[df.columns[0]]
             
@@ -38,7 +38,7 @@ class PIVProcessingTools():
             rows_before_change += 1
             previous_value = current_value
 
-        # find the number of columns of data (how many cells in the x direction)
+        # count the number of columns of data (how many cells in the x direction)
         #initialze counter variables
         y_num = None
         previous_value = None
@@ -54,16 +54,21 @@ class PIVProcessingTools():
             
             previous_value = current_value
 
-        #HERE ARE THE VARIABLES
+        #Now lets define the metadata variables that we are interested in
+        #origin is the x,y coordinate of the first datapoint
         x_origin = df.iloc[0, 0]
         y_origin = df.iloc[0, 1]
 
+        #number is the number of rows/columns
         x_num = change_count
         y_num = rows_before_change
 
+        #size is the distance between data points. For tif exports this will also be the cell size
         x_size = df.iloc[rows_before_change, 0] - df.iloc[0, 0]
         y_size = df.iloc[1, 1] - df.iloc[0, 1]
 
+        #dim is the real world distances between the smallest and largest x coordinates and the smallest and largest y coordinates
+        # basically it is the real world size of the grid of data points
         x_dim = x_size * x_num
         y_dim = y_size * y_num
 
@@ -99,6 +104,7 @@ class PIVProcessingTools():
     
     def export_PIV_as_geotiff(self, out_array, projection_num, directory, top_right_AOI, metadata):
 
+        #this defines the distance btween the corner of the top left (first) cell and the edge of the top left corner of the AOI 
         x_border_offset = metadata[0] - (metadata[4]/2)
         y_border_offset = metadata[1] - (metadata[5]/2)
         
@@ -112,17 +118,28 @@ class PIVProcessingTools():
         -metadata[5]*1000                                           # n-s pixel resolution (negative value for north-up images)
 ]
 
+        #instantiate tools for spatial reference
         proj = osr.SpatialReference()
+
+        #import projection information
         proj.ImportFromEPSG(projection_num)
 
+        #remove extra dimensions (dimensions that are only 1 long)
         datout = np.squeeze(out_array)
 
+        #set nodata value to -9999
         datout[np.isnan(datout)] = -9999
+
+        #set driver to export geotiff
         driver = gdal.GetDriverByName('GTiff')
+
+        
         cols,rows = np.shape(datout)
 
-        output_filename = directory + "/out_array"
+        #list the output filename
+        output_filename = directory + "/out_array.tif"
 
+        #create geotiff, fill with data from output array
         ds = driver.Create(output_filename, rows, cols, 1, gdal.GDT_Float32, [ 'COMPRESS=LZW' ] )
         if proj is not None:
             ds.SetProjection(proj.ExportToWkt())
@@ -174,4 +191,4 @@ class PIVProcessingTools():
         gdf.set_crs(epsg=projection_num, inplace=True)
 
         # Save the GeoDataFrame to a shapefile
-        gdf.to_file(directory + "/out_array")
+        gdf.to_file(directory + "/out_array.shp")
