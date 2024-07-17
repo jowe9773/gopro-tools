@@ -52,4 +52,3 @@ time_offset = lag / rate1
 
 # Print the time offset
 print(f"The time offset between the two audio tracks is {time_offset} seconds.")
-=
