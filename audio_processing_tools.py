@@ -1,17 +1,15 @@
-import moviepy.editor as mp
+#audio_processing_tools.py
+"""module with audio processing tools"""
+
+import tempfile
 import numpy as np
+import moviepy.editor as mp
 from scipy.signal import correlate
 from scipy.io import wavfile
-import tempfile
 from file_managers import FileManagers
+import multiprocessing
 
-#instantiate file managers
-fm = FileManagers()
-
-
-# Function to extract audio from video and return as a numpy array
 def extract_audio(video_path):
-
     print(video_path)
     clip = mp.VideoFileClip(video_path)
     audio = clip.audio
@@ -22,33 +20,46 @@ def extract_audio(video_path):
     rate, audio_data = wavfile.read(temp_audio_path)
     return rate, audio_data
 
-# Load video files and extract audio
-video1 = fm.load_fn("Choose video1")  # Replace with actual path or use a file selection method
-video2 = fm.load_fn("Choose video2")  # Replace with actual path or use a file selection method
+def find_time_offset(rate1, audio1, rate2, audio2):
+    # Ensure the sample rates are the same
+    if rate1 != rate2:
+        raise ValueError("Sample rates of the two audio tracks do not match")
 
-rate1, audio_data1 = extract_audio(video1)
-rate2, audio_data2 = extract_audio(video2)
+    # Convert stereo to mono if necessary
+    if len(audio1.shape) == 2:
+        audio1 = audio1.mean(axis=1)
+    if len(audio2.shape) == 2:
+        audio2 = audio2.mean(axis=1)
 
-# Ensure the sample rates are the same
-if rate1 != rate2:
-    raise ValueError("Sample rates of the two audio tracks do not match")
+    # Normalize audio data to avoid overflow
+    audio1 = audio1 / np.max(np.abs(audio1))
+    audio2 = audio2 / np.max(np.abs(audio2))
 
-# Convert stereo to mono if necessary
-if len(audio_data1.shape) == 2:
-    audio_data1 = audio_data1.mean(axis=1)
-if len(audio_data2.shape) == 2:
-    audio_data2 = audio_data2.mean(axis=1)
+    # Compute cross-correlation
+    correlation = correlate(audio1, audio2)
+    lag = np.argmax(correlation) - len(audio2) + 1
 
-# Normalize audio data to avoid overflow
-audio_data1 = audio_data1 / np.max(np.abs(audio_data1))
-audio_data2 = audio_data2 / np.max(np.abs(audio_data2))
+    # Calculate the time offset in seconds
+    time_offset = lag / rate1
 
-# Compute cross-correlation
-correlation = correlate(audio_data1, audio_data2)
-lag = np.argmax(correlation) - len(audio_data2) + 1
+    return time_offset
 
-# Calculate the time offset in seconds
-time_offset = lag / rate1
+def find_time_offset_wrapper(params):
+    return find_time_offset(*params)
 
-# Print the time offset
-print(f"The time offset between the two audio tracks is {time_offset} seconds.")
+if __name__ == '__main__':
+    fm = FileManagers()
+
+    video_files = [fm.load_fn("Select video1"), fm.load_fn("Select video2"), fm.load_fn("Select video3"), fm.load_fn("Select video4")]
+
+    # Step 1: Extract audio from videos using multiprocessing
+    with multiprocessing.Pool(processes=len(video_files)) as pool:
+        audio_results_async = [pool.apply_async(extract_audio, (video,)) for video in video_files]
+        audio_results = [res.get() for res in audio_results_async]
+
+    rates, audios = zip(*audio_results)
+
+    # Step 2: Prepare parameters for find_time_offset
+    audio_pairs = [(rates[0], audios[0], rates[i], audios[i]) for i in range(1, len(rates))]
+
+    print(audio_pairs)
