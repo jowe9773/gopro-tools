@@ -2,7 +2,10 @@
 
 """module containing methods for managing files"""
 
-#import necessary packages
+#import necessary packages and modules
+import shutil
+import os
+from tqdm import tqdm
 import tkinter as tk
 from tkinter import filedialog
 import csv
@@ -75,3 +78,39 @@ class FileManagers:
         metadata = skvideo.io.ffprobe(vid_file)
 
         return metadata
+
+    def transfer_directory(self, src, dst):
+        """This method is to transfer an entire directory from one location to another while preserving all subfolders"""
+        def get_all_files_and_dirs(src):
+            all_files_dirs = []
+            for root, dirs, files in os.walk(src):
+                for file in files:
+                    all_files_dirs.append(os.path.join(root, file))
+                for directory in dirs:
+                    all_files_dirs.append(os.path.join(root, directory))
+            return all_files_dirs
+
+        def copy_file(src, dst):
+            if os.path.isdir(src):
+                os.makedirs(dst, exist_ok=True)
+            else:
+                shutil.copy2(src, dst)
+
+        try:
+            # Get all files and directories in the source directory
+            items = get_all_files_and_dirs(src)
+
+            # Create the destination directory if it doesn't exist
+            os.makedirs(dst, exist_ok=True)
+
+            # Initialize the progress bar
+            with tqdm(total=len(items), unit='item') as pbar:
+                for item in items:
+                    relative_path = os.path.relpath(item, src)
+                    dst_path = os.path.join(dst, relative_path)
+                    copy_file(item, dst_path)
+                    pbar.update(1)
+            
+            print(f"Directory '{src}' has been transferred to '{dst}' successfully.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
