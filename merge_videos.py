@@ -17,6 +17,7 @@ video1 = fm.load_fn("Video1")
 video2 = fm.load_fn("Video2")
 video3 = fm.load_fn("Video3")
 
+#select gcs
 
 gcps = fm.import_gcps()
 gcps1= fm.import_gcps()
