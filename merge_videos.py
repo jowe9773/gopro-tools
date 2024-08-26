@@ -38,8 +38,8 @@ rate3, audio3 = ot.extract_audio(videos[2])
 rate4, audio4 = ot.extract_audio(videos[3])
 
 offset2 = ot.find_time_offset(rate1, audio1, rate2, audio2)
-offset3 = ot.find_time_offset(rate2, audio2, rate3, audio3) + offset2
-offset4 = ot.find_time_offset(rate3, audio3, rate4, audio4) + offset3
+offset3 = ot.find_time_offset(rate1, audio1, rate3, audio3)
+offset4 = ot.find_time_offset(rate1, audio1, rate4, audio4)
 
 
 offsets = [0, offset2*-1000, offset3*-1000, offset4*-1000]
